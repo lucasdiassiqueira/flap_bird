@@ -1,231 +1,174 @@
 import pygame as pg
+import math
 import random
 
-
-class FlapBirds:
+class Pong:
     def __init__(self, window_size):
-        self.white  = (255, 255, 255)
-        self.black  = (  0,   0,   0)
-        self.orange = (255, 165,   0)
+        self.white = (255, 255, 255)
+        self.black = (  0,   0,   0)
 
         self.window = pg.display.set_mode(window_size)
 
         pg.font.init()
-        self.font = pg.font.SysFont("Courier New", 50, bold=True)
+        self.font = pg.font.SysFont("Courier New", 100, bold=True)
 
         self.clock = pg.time.Clock()
 
-        # Mouse variables
-        self.last_click_status = (False, False, False)
+        self.player_1_pos = (self.window.get_height() - 300) / 2
+        self.player_1_score = 0
+        self.player_2_pos = (self.window.get_height() - 300) / 2
+        self.player_2_score = 0
 
-        self.gravity = 5
-        self.in_play = False
-
-        self.bird_pos       = [100, 100]
-        self.vertical_speed = 0
-        self.score          = 0
-        self.last_random_height_for_pipe = 0
-        self.bird_passing_through_obstacle = False
-
-        self.pipe_1_pos       = [ 400, self.new_height_for_pipe()]
-        self.pipe_2_pos       = [ 800, self.new_height_for_pipe()]
-        self.pipe_3_pos       = [1200, self.new_height_for_pipe()]
-        self.pipe_4_pos       = [1600, self.new_height_for_pipe()]
-        self.pipe_5_pos       = [2000, self.new_height_for_pipe()]
-        self.background_1_pos = [   0,   0]
-        self.background_2_pos = [2120,   0]
-        self.ground_1_pos     = [   0, 634]
-        self.ground_2_pos     = [1010, 634]
-        self.ground_3_pos     = [2020, 634]
-
-        background = pg.image.load('./Background.png')
-        bird       = pg.image.load('./Bird.png')
-        ground     = pg.image.load('./Ground.png')
-        pipe       = pg.image.load('./Pipe.png')
-        pipe_usd   = pg.image.load('./Pipe Up Side Down.png')
-        self.background = pg.transform.scale(background, (2120, 634))
-        self.bird       = pg.transform.scale(bird,       (  51,  36))
-        self.ground     = pg.transform.scale(ground,     (1010,  86))
-        self.pipe       = pg.transform.scale(pipe,       ( 123, 600))
-        self.pipe_usd   = pg.transform.scale(pipe_usd,   ( 123, 600))
-
-    def mouse_has_clicked(self, input):
-            if self.last_click_status == input:
-                return (False, False, False)
-            else:
-                left_button = False
-                center_button = False
-                right_button = False
-                if self.last_click_status[0] == False and input[0] == True:
-                    left_button = True
-                if self.last_click_status[1] == False and input[1] == True:
-                    center_button = True
-                if self.last_click_status[2] == False and input[2] == True:
-                    right_button = True
-
-                return (left_button, center_button, right_button)
+        self.ball_directions = [[4 * math.cos(math.radians(60)), 4 * math.sin(math.radians(60))],
+                                [4 * math.cos(math.radians(45)), 4 * math.sin(math.radians(45))],
+                                [4 * math.cos(math.radians(30)), 4 * math.sin(math.radians(30))],
+                                [4 * math.cos(math.radians(-30)), 4 * math.sin(math.radians(-30))],
+                                [4 * math.cos(math.radians(-45)), 4 * math.sin(math.radians(-45))],
+                                [4 * math.cos(math.radians(-60)), 4 * math.sin(math.radians(-60))],
+                                [-4 * math.cos(math.radians(60)), 4 * math.sin(math.radians(60))],
+                                [-4 * math.cos(math.radians(45)), 4 * math.sin(math.radians(45))],
+                                [-4 * math.cos(math.radians(30)), 4 * math.sin(math.radians(30))],
+                                [-4 * math.cos(math.radians(-30)), 4 * math.sin(math.radians(-30))],
+                                [-4 * math.cos(math.radians(-45)), 4 * math.sin(math.radians(-45))],
+                                [-4 * math.cos(math.radians(-60)), 4 * math.sin(math.radians(-60))],
+                                [0, 0]]
+        self.ball_angle = 12
+        self.ball_pos = [50, ((self.window.get_height() - 300) / 2) + 150]
+        self.ball_direction = [0, 0]
 
     def clear_window(self):
-        pg.draw.rect(self.window, self.white, (0, 0, self.window.get_width(), self.window.get_height()))
+        pg.draw.rect(self.window, self.black, (0, 0, self.window.get_width(), self.window.get_height()))
 
     def board(self):
-        # Background
-        self.window.blit(self.background, (self.background_1_pos[0], self.background_1_pos[1]))
-        self.window.blit(self.background, (self.background_2_pos[0], self.background_2_pos[1]))
+        # Midle line
+        pg.draw.line(self.window, self.white, (self.window.get_width() / 2, 0), (self.window.get_width() / 2, self.window.get_height()), 10)
+        # Left player
+        player_1_score_text = self.font.render(str(self.player_1_score), 1, self.white)
+        blit_x = (self.window.get_width() / 2) - player_1_score_text.get_width() - 25
+        self.window.blit(player_1_score_text, (blit_x, 25))
+        # Right player
+        player_2_score_text = self.font.render(str(self.player_2_score), 1, self.white)
+        blit_x = (self.window.get_width() / 2) + 25
+        self.window.blit(player_2_score_text, (blit_x, 25))
+        # Player 1
+        pg.draw.rect(self.window, self.white, (0, self.player_1_pos, 50, 300))
+        # Player 2
+        pg.draw.rect(self.window, self.white, (self.window.get_width() - 50, self.player_2_pos, 50, 300))
+        # Ball
+        pg.draw.rect(self.window, self.white, (self.ball_pos[0], self.ball_pos[1], 30, 30))
 
-        # Pipes
-        self.window.blit(self.pipe,     (self.pipe_1_pos[0], self.pipe_1_pos[1]))
-        self.window.blit(self.pipe_usd, (self.pipe_1_pos[0], self.pipe_1_pos[1] - 800))
-        self.window.blit(self.pipe,     (self.pipe_2_pos[0], self.pipe_2_pos[1]))
-        self.window.blit(self.pipe_usd, (self.pipe_2_pos[0], self.pipe_2_pos[1] - 800))
-        self.window.blit(self.pipe,     (self.pipe_3_pos[0], self.pipe_3_pos[1]))
-        self.window.blit(self.pipe_usd, (self.pipe_3_pos[0], self.pipe_3_pos[1] - 800))
-        self.window.blit(self.pipe,     (self.pipe_4_pos[0], self.pipe_4_pos[1]))
-        self.window.blit(self.pipe_usd, (self.pipe_4_pos[0], self.pipe_4_pos[1] - 800))
-        self.window.blit(self.pipe,     (self.pipe_5_pos[0], self.pipe_5_pos[1]))
-        self.window.blit(self.pipe_usd, (self.pipe_5_pos[0], self.pipe_5_pos[1] - 800))
+    def move(self, keys):
+        key = None
+        for i in range(1, len(keys)):
+            if keys[i] == True:
+                key = i
 
-        # Ground
-        self.window.blit(self.ground, (self.ground_1_pos[0], self.ground_1_pos[1]))
-        self.window.blit(self.ground, (self.ground_2_pos[0], self.ground_2_pos[1]))
-        self.window.blit(self.ground, (self.ground_3_pos[0], self.ground_3_pos[1]))
+        if key == 119 and self.player_1_pos > 0:
+            if self.ball_direction[0] == 0:
+                self.ball_angle = random.randint(3, 5)
+                self.ball_direction = self.ball_directions[self.ball_angle]
+            self.player_1_pos -= 2
+        elif key == 115 and self.player_1_pos < (self.window.get_height() - 300):
+            if self.ball_direction[0] == 0:
+                self.ball_angle = random.randint(0, 2)
+                self.ball_direction = self.ball_directions[self.ball_angle]
+            self.player_1_pos += 2
 
-        # Bird
-        self.window.blit(self.bird, (self.bird_pos[0], self.bird_pos[1]))
+    def reset_game_variables(self):
+        self.ball_angle = 12
+        self.ball_direction = [0, 0]
+        self.ball_pos = [50, ((self.window.get_height() - 300) / 2) + 150]
+        self.player_1_pos = (self.window.get_height() - 300) / 2
+        self.player_2_pos = (self.window.get_height() - 300) / 2
 
-    def move(self, key):
-        if key == 'space':
-            self.vertical_speed = -10
-        elif key == 'r':
-            self.restart()
+    def is_this_a_score(self):
+        if self.ball_pos[0] <= 50:
+            if self.ball_pos[1] + 30 < self.player_1_pos or self.ball_pos[1] > self.player_1_pos + 300:
+                if self.ball_direction[0] != 0:
+                    self.player_2_score += 1
+                self.reset_game_variables()
+        elif self.ball_pos[0] + 30 >= self.window.get_width() - 50:
+            if self.ball_pos[1] + 30 < self.player_2_pos or self.ball_pos[1] > self.player_2_pos + 300:
+                self.player_1_score += 1
+                self.reset_game_variables()
 
-    def new_height_for_pipe(self):
-        new_height = random.randint(6, 10) * 50
-        while self.last_random_height_for_pipe == new_height:
-            new_height = random.randint(6, 10) * 50
+    def ball_colliding_top_and_bottom(self):
+        if self.ball_pos[1] <= 0:
+            if self.ball_angle == 3:
+                self.ball_angle = 2
+            elif self.ball_angle == 4:
+                self.ball_angle = 1
+            elif self.ball_angle == 5:
+                self.ball_angle = 0
+            elif self.ball_angle == 9:
+                self.ball_angle = 8
+            elif self.ball_angle == 10:
+                self.ball_angle = 7
+            elif self.ball_angle == 11:
+                self.ball_angle = 6
+        elif self.ball_pos[1] + 30 >= self.window.get_height():
+            if self.ball_angle == 2:
+                self.ball_angle = 3
+            elif self.ball_angle == 1:
+                self.ball_angle = 4
+            elif self.ball_angle == 0:
+                self.ball_angle = 5
+            elif self.ball_angle == 6:
+                self.ball_angle = 11
+            elif self.ball_angle == 7:
+                self.ball_angle = 10
+            elif self.ball_angle == 8:
+                self.ball_angle = 9
 
-        self.last_random_height_for_pipe = new_height
+    def ball_bouncing_off_a_player(self):
+        if self.ball_pos[0] + 30 >= self.window.get_width() - 50:
+            if self.ball_pos[1] + 30 >= self.player_2_pos or self.ball_pos[1] <= self.player_2_pos + 300:
+                if self.ball_angle == 0:
+                    self.ball_angle = 6
+                elif self.ball_angle == 1:
+                    self.ball_angle = 7
+                elif self.ball_angle == 2:
+                    self.ball_angle = 8
+                elif self.ball_angle == 3:
+                    self.ball_angle = 9
+                elif self.ball_angle == 4:
+                    self.ball_angle = 10
+                elif self.ball_angle == 5:
+                    self.ball_angle = 11
+        elif self.ball_pos[0] <=  50:
+            if self.ball_pos[1] + 30 >= self.player_1_pos or self.ball_pos[1] <= self.player_1_pos + 300:
+                if self.ball_angle == 6:
+                    self.ball_angle = 0
+                elif self.ball_angle == 7:
+                    self.ball_angle = 1
+                elif self.ball_angle == 8:
+                    self.ball_angle = 2
+                elif self.ball_angle == 9:
+                    self.ball_angle = 3
+                elif self.ball_angle == 10:
+                    self.ball_angle = 4
+                elif self.ball_angle == 11:
+                    self.ball_angle = 5
 
-        return new_height
+    def ball_movement(self):
+        self.ball_colliding_top_and_bottom()
 
-    def movement(self):
-        if self.in_play:
-            # Pipes
-            self.pipe_1_pos[0] -= 1.2
-            self.pipe_2_pos[0] -= 1.2
-            self.pipe_3_pos[0] -= 1.2
-            self.pipe_4_pos[0] -= 1.2
-            self.pipe_5_pos[0] -= 1.2
-            if self.pipe_1_pos[0] <= -123:
-                self.pipe_1_pos[0] = self.pipe_2_pos[0]
-                self.pipe_1_pos[1] = self.pipe_2_pos[1]
-                self.pipe_2_pos[0] = self.pipe_3_pos[0]
-                self.pipe_2_pos[1] = self.pipe_3_pos[1]
-                self.pipe_3_pos[0] = self.pipe_4_pos[0]
-                self.pipe_3_pos[1] = self.pipe_4_pos[1]
-                self.pipe_4_pos[0] = self.pipe_5_pos[0]
-                self.pipe_4_pos[1] = self.pipe_5_pos[1]
-                self.pipe_5_pos[0] = 1877
-                self.pipe_5_pos[1] = self.new_height_for_pipe()
+        self.ball_direction = self.ball_directions[self.ball_angle]
+        self.ball_pos[0] += self.ball_direction[0]
+        self.ball_pos[1] += self.ball_direction[1]
 
-            # Background
-            self.background_1_pos[0] -= 1.2
-            self.background_2_pos[0] -= 1.2
-            if self.background_1_pos[0] <= -2120:
-                self.background_1_pos[0] = 0
-                self.background_2_pos[0] = 2120
+        self.ball_bouncing_off_a_player()
 
-            # Ground
-            self.ground_1_pos[0]     -= 1.2
-            self.ground_2_pos[0]     -= 1.2
-            self.ground_3_pos[0]     -= 1.2
-            if self.ground_1_pos[0] <= -1010:
-                self.ground_1_pos[0] = 0
-                self.ground_2_pos[0] = 1010
-                self.ground_3_pos[0] = 2020
+        self.is_this_a_score()
 
-            # Bird
-            if self.vertical_speed <= 5:
-                self.vertical_speed += self.gravity / 15
-            self.bird_pos[1] += self.vertical_speed
-
-    def scoreboard(self):
-        if self.pipe_1_pos[0] < self.bird_pos[0] + 51 and self.pipe_1_pos[0] + 123 > self.bird_pos[0]:
-            self.bird_passing_through_obstacle = True
-        else:
-            if self.bird_passing_through_obstacle:
-                self.score += 1
-            self.bird_passing_through_obstacle = False
-
-        border = 5
-        x = 1100
-        y = 50
-        height = 100
-        width = 150
-
-        text = self.font.render(str(self.score), 1, self.white)
-        text_x = (x + (width / 2)) - (text.get_width() / 2)
-        text_y = (y + (height / 2)) - (text.get_height() / 2)
-
-        pg.draw.rect(self.window, self.orange, (x, y, width, height))
-        pg.draw.rect(self.window, self.black, (x, y, width, height), border)
-        pg.draw.rect(self.window, self.white, (x + border, y + border, width - (border * 2), height - (border * 2)), border)
-        self.window.blit(text, (text_x, text_y))
-
-    def collision(self):
-        if self.pipe_1_pos[0] < self.bird_pos[0] + 51 and self.pipe_1_pos[0] + 123 > self.bird_pos[0]:
-            if self.bird_pos[1] + 36 > self.pipe_1_pos[1] or self.bird_pos[1] < self.pipe_1_pos[1] - 200:
-                self.in_play = False
-
-        if self.bird_pos[1] + 36 > 634:
-            self.in_play = False
-
-    def restart_button(self, mouse):
-        if self.in_play == False:
-            text = self.font.render('Restart', 1, self.white)
-            text_x = (self.window.get_width() / 2) - (text.get_width() / 2)
-            text_y = (self.window.get_height() / 2) - (text.get_height() / 2)
-
-            border = 5
-            height = text.get_height() + 50
-            width = text.get_width() + 50
-            x = (self.window.get_width() / 2) - (width / 2)
-            y = (self.window.get_height() / 2) - (height / 2)
-
-            if mouse[0][0] >= x and mouse[0][0] <= x + width and mouse[0][1] >= y and mouse[0][1] <= y + height:
-                hover_color = tuple(min(rgb + 50, 255) for rgb in self.orange)
-                pg.draw.rect(self.window, hover_color, (x, y, width, height))
-                if mouse[2][0]:
-                    self.restart()
-            else:
-                pg.draw.rect(self.window, self.orange, (x, y, width, height))
-            pg.draw.rect(self.window, self.black, (x, y, width, height), border)
-            pg.draw.rect(self.window, self.white, (x + border, y + border, width - (border * 2), height - (border * 2)), border)
-
-            self.window.blit(text, (text_x, text_y))
-
-    def restart(self):
-        self.bird_pos       = [100, 100]
-        self.vertical_speed = 0
-        self.score          = 0
-        self.last_random_height_for_pipe = 0
-        self.bird_passing_through_obstacle = False
-
-        self.pipe_1_pos       = [ 400, self.new_height_for_pipe()]
-        self.pipe_2_pos       = [ 800, self.new_height_for_pipe()]
-        self.pipe_3_pos       = [1200, self.new_height_for_pipe()]
-        self.pipe_4_pos       = [1600, self.new_height_for_pipe()]
-        self.pipe_5_pos       = [2000, self.new_height_for_pipe()]
-        self.background_1_pos = [   0,   0]
-        self.background_2_pos = [2120,   0]
-        self.ground_1_pos     = [   0, 634]
-        self.ground_2_pos     = [1010, 634]
-        self.ground_3_pos     = [2020, 634]
-        self.in_play = True
+    def player_2_movement(self):
+        if self.player_2_pos > self.ball_pos[1] + 30:
+            self.player_2_pos -= 1
+        elif self.player_2_pos + 300 < self.ball_pos[1]:
+            self.player_2_pos += 1
 
 
-jogo = FlapBirds((1280, 720))
-
+pong = Pong((1280, 720))
 
 while True:
     for event in pg.event.get():
@@ -233,26 +176,16 @@ while True:
             pg.quit()
             quit()
         if event.type == pg.KEYDOWN:
-            jogo.move(pg.key.name(event.key))
             if pg.key.name(event.key) == 'escape':
                 pg.quit()
                 quit()
 
-    # Mouse info
-    mouse_position  = pg.mouse.get_pos()
-    mouse_input = pg.mouse.get_pressed()
-    mouse_click = jogo.mouse_has_clicked(mouse_input)
-    mouse = (mouse_position, mouse_input, mouse_click)
-
     # Game
-    jogo.clock.tick(60)
-    jogo.clear_window()
-    jogo.board()
-    jogo.movement()
-    jogo.scoreboard()
-    jogo.collision()
-    jogo.restart_button(mouse)
-
-    jogo.last_click_status = mouse_input
+    pong.clock.tick(60)
+    pong.clear_window()
+    pong.move(pg.key.get_pressed())
+    pong.ball_movement()
+    pong.board()
+    pong.player_2_movement()
 
     pg.display.update()
